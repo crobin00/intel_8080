@@ -11,5 +11,7 @@ Test roms can be found in the `roms/` directory.
 
 ## Resources
 [Emulator101](http://www.emulator101.com)
+
 [tobiasvl's Intel 8080/8085 opcode table](https://tobiasvl.github.io/optable//intel-8080/classic)
+
 Intel 8080 Datasheet (can find on google)
