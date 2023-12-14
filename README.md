@@ -7,7 +7,7 @@ Test roms can be found in the `roms/` directory.
 `git clone https://github.com/crobin00/intel_8080.git && cd ./intel_8080 && make`
 
 ## Usage
-`./intel_8080 [romfile]`
+`./intel_8080 [--debug] romfile`
 
 ## Resources
 [Emulator101](http://www.emulator101.com)
