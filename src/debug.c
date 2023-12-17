@@ -409,8 +409,8 @@ void sys_call(Cpu* cpu) {
     }
 }
 
-void print_memory(Cpu* cpu) {
-    for (int i = 0; i < 0x1000; i++) {
+void print_memory(Cpu* cpu, uint16_t memory_size) {
+    for (int i = 0; i < memory_size + 0x100; i++) {
         if (i % 16 == 0) printf("\n%08x ", i);
         printf("%02x ", *(cpu->memory + i));
     }

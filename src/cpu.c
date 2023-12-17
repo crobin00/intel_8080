@@ -155,7 +155,7 @@ static void RET(Cpu* cpu) {
 static void DCR(Cpu* cpu, uint8_t* reg) {
     *reg -= 1;
     SET_SZP(cpu, *reg);
-    cpu->af = !((*reg & 0xF) == 0xF);
+    cpu->af = !((*reg & 0xF) == 0xF); // always a carry except when value before decrementing is 0x0
 }
 
 static void DCX(uint8_t* rh, uint8_t* rl) {
@@ -167,7 +167,7 @@ static void DCX(uint8_t* rh, uint8_t* rl) {
 static void INR(Cpu* cpu, uint8_t* reg) {
     *reg += 1;
     SET_SZP(cpu, *reg);
-    cpu->af = (*reg & 0xF) == 0;
+    cpu->af = (*reg & 0xF) == 0; // carry when value before incrementing is 0xF
 }
 
 static void INX(uint8_t* rh, uint8_t* rl) {
@@ -187,7 +187,7 @@ static void ADD(Cpu* cpu, uint8_t reg) {
     uint8_t prev = cpu->a;
     cpu->a += reg;
     SET_SZP(cpu, cpu->a);
-    cpu->af = ((prev & 0xF) + (reg & 0xF) >= 0x10);
+    cpu->af = ((prev & 0xF) + (reg & 0xF)) & 0x10;
     cpu->cf = carry_add(prev, reg, 0);
 }
 
@@ -195,7 +195,7 @@ static void SUB(Cpu* cpu, uint8_t reg) {
     uint8_t prev = cpu->a;
     cpu->a -= reg;
     SET_SZP(cpu, cpu->a);
-    cpu->af = ~(cpu->a ^ prev ^ reg) & 0x10;
+    cpu->af = ((prev & 0xF) + ((~reg & 0xF) + 1)) & 0x10; // a - b = a + (-b)
     cpu->cf = carry_sub(prev, reg, 0);
 }
 
@@ -203,7 +203,7 @@ static void ADC(Cpu* cpu, uint8_t reg) {
     uint8_t prev = cpu->a;
     cpu->a = prev + reg + cpu->cf;
     SET_SZP(cpu, cpu->a);
-    cpu->af = ((prev & 0xF) + (reg & 0xF) + cpu->cf >= 0x10);
+    cpu->af = ((prev & 0xF) + (reg & 0xF) + cpu->cf) & 0x10;
     cpu->cf = carry_add(prev, reg, cpu->cf);
 }
 
@@ -211,7 +211,7 @@ static void SBB(Cpu* cpu, uint8_t reg) {
     uint8_t prev = cpu->a;
     cpu->a = prev - reg - cpu->cf;
     SET_SZP(cpu, cpu->a);
-    cpu->af = ~(cpu->a ^ prev ^ reg ^ cpu->cf) & 0x10;
+    cpu->af = ((prev & 0xF) + (~reg & 0xF) + !cpu->cf) & 0x10;
     cpu->cf = carry_sub(prev, reg, cpu->cf);
 }
 
@@ -219,7 +219,7 @@ static void ANA(Cpu* cpu, uint8_t reg) {
     uint8_t prev = cpu->a;
     cpu->a &= reg;
     SET_SZP(cpu, cpu->a);
-    cpu->af = ((prev | reg) & 0x08) != 0;
+    cpu->af = ((prev | reg) & 0x08) != 0; // https://www.quora.com/What-is-the-auxiliary-carry-set-when-ANA-R-instruction-is-executed-in-an-8085-CPU
     cpu->cf = 0;
 }
 
@@ -234,7 +234,7 @@ static void CMP(Cpu* cpu, uint8_t reg) {
     uint8_t result = cpu->a - reg;
     SET_SZP(cpu, result);
     cpu->cf = carry_sub(cpu->a, reg, 0);
-    cpu->af = ~(cpu->a ^ result ^ reg) & 0x10;
+    cpu->af = ((cpu->a & 0xF) + ((~reg & 0xF) + 1)) & 0x10;
 }
 
 static void LDAX(Cpu* cpu, uint8_t rh, uint8_t rl) {
@@ -535,7 +535,7 @@ void cpu_execute(Cpu* cpu) {
             uint8_t byte = cpu_read_byte(cpu);
             cpu->a += byte;
             SET_SZP(cpu, cpu->a);
-            cpu->af = ((prev & 0xF) + (byte & 0xF) >= 0x10);
+            cpu->af = ((prev & 0xF) + (byte & 0xF)) & 0x10;
             cpu->cf = carry_add(prev, byte, 0);
             break;
         }
@@ -564,7 +564,7 @@ void cpu_execute(Cpu* cpu) {
             uint8_t byte = cpu_read_byte(cpu);
             cpu->a = prev + byte + cpu->cf;
             SET_SZP(cpu, cpu->a);
-            cpu->af = ((prev & 0xF) + (byte & 0xF) + cpu->cf >= 0x10);
+            cpu->af = ((prev & 0xF) + (byte & 0xF) + cpu->cf) & 0x10;
             cpu->cf = carry_add(prev, byte, cpu->cf);
             break;
         }
@@ -593,7 +593,7 @@ void cpu_execute(Cpu* cpu) {
             uint8_t byte = cpu_read_byte(cpu);
             cpu->a -= byte;
             SET_SZP(cpu, cpu->a);
-            cpu->af = ~(cpu->a ^ prev ^ byte) & 0x10;
+            cpu->af = ((prev & 0xF) + ((~byte & 0xF) + 1)) & 0x10;
             cpu->cf = carry_sub(prev, byte, 0);
             break;
         }
@@ -622,7 +622,7 @@ void cpu_execute(Cpu* cpu) {
             uint8_t byte = cpu_read_byte(cpu);
             cpu->a = prev - byte - cpu->cf;
             SET_SZP(cpu, cpu->a);
-            cpu->af = ~(cpu->a ^ prev ^ byte ^ cpu->cf) & 0x10;
+            cpu->af = ((prev & 0xF) + (~byte & 0xF) + !cpu->cf) & 0x10;
             cpu->cf = carry_sub(prev, byte, cpu->cf);
             break;
         }
@@ -660,7 +660,7 @@ void cpu_execute(Cpu* cpu) {
             uint8_t byte = cpu_read_byte(cpu);
             cpu->a &= byte;
             SET_SZP(cpu, cpu->a);
-            cpu->af = (((prev | byte) & 0x08) != 0);
+            cpu->af = ((prev | byte) & 0x08) != 0;
             cpu->cf = 0;
             break;
         }
@@ -752,11 +752,11 @@ void cpu_execute(Cpu* cpu) {
         case 0xfd: NOP(); break;
                    // CPI
         case 0xfe: {
-            uint8_t val = cpu_read_byte(cpu);
-            uint8_t result = cpu->a - val;
+            uint8_t byte = cpu_read_byte(cpu);
+            uint8_t result = cpu->a - byte;
             SET_SZP(cpu, result);
-            cpu->cf = carry_sub(cpu->a, val, 0);
-            cpu->af = ~(cpu->a ^ result ^ val) & 0x10;
+            cpu->cf = carry_sub(cpu->a, byte, 0);
+            cpu->af = ((cpu->a & 0xF) + ((~byte & 0xF) + 1)) & 0x10;
             break;
         }
                    // RST 7
